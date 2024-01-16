@@ -1,0 +1,18 @@
+<en_us>
+ * Created on Wed Jan 10 2024 07:02:57
+ * Feature: Provide the following content,
+ *         String, simplified character list SIMPLIFIED_CHINESE_CHARS
+ *         String, traditional Chinese character list TRADITIONAL_CHINESE_CHARS
+ *         String array, simplified to traditional phrase correspondence table CHINESE_PHRASES_FROM_SIMPLIFIED_TO_TRADITIONAL
+ *         String array, Traditional to Simplified phrase correspondence table CHINESE_PHRASES_FROM_TRADITIONAL_TO_SIMPLIFIED
+ *         Method, simple to traditional cn2tw(original: string): string
+ *         Method, convert traditional to simplified tw2cn(original: string): string
+ * </en_us>
+<en_us>Simplified Chinese word list</en_us>
+<en_us>Traditional Chinese character list</en_us>
+<en_us>Simplified to Traditional Chinese phrase correspondence table</en_us>
+<en_us>Correspondence table between traditional and simplified phrases</en_us>
+<en_us>Simplified to Traditional Chinese</en_us>
+<en_us>Simplified Chinese text</en_us>
+<en_us>Traditional to Simplified Chinese</en_us>
+<en_us>Traditional Chinese text</en_us>

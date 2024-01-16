@@ -1,0 +1,320 @@
+﻿a couple of
+absent
+accident
+accidental
+accidentally
+accurate
+actually
+addition
+affect
+ahead-of-time
+aim to
+allocate
+analysis
+angle-bracket
+annotation
+anonymous
+approach
+appropriately
+arbitrary
+assertion
+assignability
+associated
+assume
+assumes
+at first glance
+automatically
+back out
+backward
+behavior
+bend
+boilerplate
+Boolean negations
+branch
+capabilities
+capitalize
+caution
+caveats
+certainly
+clause
+closure
+coercion
+communicating
+compatible
+compose
+concatenating
+concept
+concerned
+concrete
+conflicts
+confusing
+conservative
+considered
+consistent
+consume
+containing
+contextual
+contract
+convenient
+conveniently
+convention-based
+conversely
+convince
+correctly
+correspond
+corresponding
+crash
+cross-instance
+crucial
+cumbersome
+decision
+declaratively
+default
+definitely
+denote
+describing
+desired
+despite
+destructuring
+determine
+dig through
+disallow
+discriminant
+discriminated
+distinct
+distinction
+distributive
+dive deep
+double-Boolean negation
+drawback
+dread
+dynamically
+effectively
+eligible
+emit
+encounter
+ended up
+enforce
+equipment
+erase
+error-prone
+especially
+exhaustiveness
+expectation
+expected
+explicit
+explicitly
+exploration
+exponentially
+exposure
+express
+expressing
+extra
+extract out
+fact
+factor
+facts
+fairly
+flatten
+flexibility
+flexible
+frequently
+frustrating
+fundamental
+further
+generally
+get rid of
+go into depth
+grab
+guarantee
+guideline
+heavily
+heritage
+heuristic
+hold off
+identical
+identically
+identified
+identifiers
+identity
+illegal
+immutable
+implementation
+implicit
+implies
+imply
+in terms of
+indentifier
+index signatures
+indexed access
+individual
+infer
+inference
+influence
+informs
+inherit
+insight
+inspection
+instantiate
+instantiated
+instructive
+intent
+intented
+intentional
+intentionally
+intermediate
+internal
+interpolated
+intersection types
+intrinsic
+introspected
+invoke
+iterable
+handy
+keep in mind
+latter
+leakage
+legal
+leverage
+likely
+literal
+locking in
+looser equality
+malicious
+mandatory
+manipulation
+meaningfully
+mechanisms
+mitigate
+moreover
+motivation
+naïve
+narrow
+narrow out
+natively
+necessarily
+negated
+notation
+notion
+nowhere
+observe
+obvious
+occur
+occurred
+omitting
+opposed
+opposite
+originates
+particular
+pattern
+peculiar
+perfectly
+perform
+permissive
+permit
+pesky
+popular
+potential
+potentially
+precautionary
+preceding
+precise
+predefined
+predicate
+preference
+present
+presumably
+primitive
+principle
+prior
+prior to
+probing apart
+produce
+producing
+prone
+prototype chain
+provide
+purely additive
+quirks
+rarely
+reachability
+recommendation
+reconsidering
+refactor
+refer to
+reiterate
+relevant
+rely on
+re-merge
+represent
+representation
+represented
+rest
+restricting
+restriction
+retrieve
+run into
+safer
+satisfies
+scaffold out
+section
+segue
+show up
+showcasing
+signal
+signature
+significant
+similar
+situation
+slightly
+specify
+specifying
+square brackets
+staically
+states
+straightforward
+strategy
+structurally
+structure
+substitute
+substituted
+subtly
+subtype
+succinct
+surprised
+surprising
+surround
+swing
+syntactically
+syntax
+reinforce
+terminates execution
+ternaries
+theory
+though
+throughout
+track of
+trade-offs
+traffic
+transpiler
+trap
+treated
+truthiness
+turning up
+type-level
+typically
+typo-resistant
+unbounded
+uncapitalize
+underlying
+unfamiliar
+unfortunate
+unpack
+unqualified
+untyped
+unusual
+variable
+variety
+verified
+well-defined
+wide

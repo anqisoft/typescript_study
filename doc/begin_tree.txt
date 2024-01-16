@@ -1,0 +1,42 @@
+.
+©¦  .gitignore
+©¦  deno.json
+©¦  deno.lock
+©¦  import_map.json
+©¦  LICENSE
+©¦  README.md
+©¦  tsconfig.json
+©¦  
+©À©¤bat
+©¦  ©¦  buildDeclarationFiles.bat
+©¦  ©¦  clearMinCss.bat
+©¦  ©¦  clearMinJs.bat
+©¦  ©¦  compressCss.bat
+©¦  ©¦  compressJs.bat
+©¦  ©¦  
+©¦  ©À©¤deno
+©¦  ©¦      bundle_dice.bat
+©¦  ©¦      bundle_test_simple.bat
+©¦  ©¦      fmt.bat
+©¦  ©¦      fmt_without_log.bat
+©¦  ©¦      lint.bat
+©¦  ©¦      lint_without_log.bat
+©¦  ©¦      _bundle_core.bat
+©¦  ©¦      _bundle_test_core.bat
+©¦  ©¦      
+©¦  ©À©¤rust
+©¦  ©À©¤test
+©¦  ©¸©¤_common
+©¦          createJson.core.bat
+©¦          createJson.core_en_landscape.bat
+©¦          run.python.core.bat
+©¦          
+©À©¤dist
+©À©¤doc
+©¦      begin_tree.txt
+©¦      
+©À©¤log
+©¦  ©À©¤fmt
+©¦  ©¸©¤lint
+©À©¤src
+©¸©¤types

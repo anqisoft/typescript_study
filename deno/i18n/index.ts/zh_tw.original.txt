@@ -1,0 +1,18 @@
+<zh_tw>
+ * 創建：2024年1月10日 07:02:57
+ * 功能：提供以下內容，
+ *      字元串，簡體單字清單 SIMPLIFIED_CHINESE_CHARS
+ *      字元串，繁體單字清單 TRADITIONAL_CHINESE_CHARS
+ *      字元串數組，簡轉繁片語對應錶 CHINESE_PHRASES_FROM_SIMPLIFIED_TO_TRADITIONAL
+ *      字元串數組，繁轉簡片語對應錶 CHINESE_PHRASES_FROM_TRADITIONAL_TO_SIMPLIFIED
+ *      方法，簡轉繁 cn2tw(original: string): string
+ *      方法，繁轉簡 tw2cn(original: string): string
+ * </zh_tw>
+<zh_tw>簡體單字清單</zh_tw>
+<zh_tw>繁體單字清單</zh_tw>
+<zh_tw>簡轉繁片語對應錶</zh_tw>
+<zh_tw>繁轉簡片語對應錶</zh_tw>
+<zh_tw>簡轉繁</zh_tw>
+<zh_tw>簡體中文文本</zh_tw>
+<zh_tw>繁轉簡</zh_tw>
+<zh_tw>繁體中文文本</zh_tw>

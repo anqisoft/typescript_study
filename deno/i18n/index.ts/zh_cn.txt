@@ -1,0 +1,18 @@
+<zh_cn>
+ * 创建：2024年1月10日 07:02:57
+ * 功能：提供以下内容，
+ *      字符串，简体单字清单 SIMPLIFIED_CHINESE_CHARS
+ *      字符串，繁体单字清单 TRADITIONAL_CHINESE_CHARS
+ *      字符串数组，简转繁词组对应表 CHINESE_PHRASES_FROM_SIMPLIFIED_TO_TRADITIONAL
+ *      字符串数组，繁转简词组对应表 CHINESE_PHRASES_FROM_TRADITIONAL_TO_SIMPLIFIED
+ *      方法，简转繁 cn2tw(original: string): string
+ *      方法，繁转简 tw2cn(original: string): string
+ * </zh_cn>
+<zh_cn>简体单字清单</zh_cn>
+<zh_cn>繁体单字清单</zh_cn>
+<zh_cn>简转繁词组对应表</zh_cn>
+<zh_cn>繁转简词组对应表</zh_cn>
+<zh_cn>简转繁</zh_cn>
+<zh_cn>简体中文文本</zh_cn>
+<zh_cn>繁转简</zh_cn>
+<zh_cn>繁体中文文本</zh_cn>

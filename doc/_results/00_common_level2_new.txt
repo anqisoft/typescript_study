@@ -1,0 +1,1467 @@
+  1 queueMicrotask function
+  2 atob function
+  3 btoa function
+  4 caches object
+  5 crypto object
+  6 fetch function
+  7 EventSource function
+  8 reportError function
+  9 structuredClone function
+ 10 self object
+ 11 navigator object
+ 12 alert function
+ 13 confirm function
+ 14 prompt function
+ 15 localStorage object
+ 16 sessionStorage object
+ 17 name string
+ 18 close function
+ 19 closed boolean
+ 20 onerror object
+ 21 onload object
+ 22 onbeforeunload object
+ 23 onunload object
+ 24 onunhandledrejection object
+ 25 clearInterval function
+ 26 clearTimeout function
+ 27 performance object
+ 28 setInterval function
+ 29 setTimeout function
+ 30 window object
+ 31 addEventListener function
+ 32 removeEventListener function
+ 33 dispatchEvent function
+ 34 getParent function
+
+
+ 19 function properties:  queueMicrotask, atob, btoa, fetch, EventSource, reportError, structuredClone, alert, confirm, prompt, close, clearInterval, clearTimeout, setInterval, setTimeout, addEventListener, removeEventListener, dispatchEvent, getParent
+  5 null properties:  onerror, onload, onbeforeunload, onunload, onunhandledrejection
+  8 object(not null) properties:  caches, crypto, self, navigator, localStorage, sessionStorage, performance, window
+
+function count: 19
+  1 queueMicrotask
+  2 atob
+  3 btoa
+  4 fetch
+  5 EventSource
+  6 reportError
+  7 structuredClone
+  8 alert
+  9 confirm
+ 10 prompt
+ 11 close
+ 12 clearInterval
+ 13 clearTimeout
+ 14 setInterval
+ 15 setTimeout
+ 16 addEventListener
+ 17 removeEventListener
+ 18 dispatchEvent
+ 19 getParent
+
+
+//   1 queueMicrotask
+function queueMicrotask(cb) {
+    if (typeof cb != "function") {
+      throw new TypeError("expected a function");
+    }
+    return ops.op_queue_microtask(() => {
+      try {
+        cb();
+      } catch (error) {
+        if (reportExceptionCallback) {
+          reportExceptionCallback(error);
+        } else {
+          throw error;
+        }
+      }
+    });
+  }
+
+
+//   2 atob
+function atob(data) {
+  const prefix = "Failed to execute 'atob'";
+  webidl.requiredArguments(arguments.length, 1, prefix);
+  data = webidl.converters.DOMString(data, prefix, "Argument 1");
+  try {
+    return ops.op_base64_atob(data);
+  } catch (e) {
+    if (ObjectPrototypeIsPrototypeOf(TypeErrorPrototype, e)) {
+      throw new DOMException(
+        "Failed to decode base64: invalid character",
+        "InvalidCharacterError",
+      );
+    }
+    throw e;
+  }
+}
+
+
+//   3 btoa
+function btoa(data) {
+  const prefix = "Failed to execute 'btoa'";
+  webidl.requiredArguments(arguments.length, 1, prefix);
+  data = webidl.converters.DOMString(data, prefix, "Argument 1");
+  try {
+    return ops.op_base64_btoa(data);
+  } catch (e) {
+    if (ObjectPrototypeIsPrototypeOf(TypeErrorPrototype, e)) {
+      throw new DOMException(
+        "The string to be encoded contains characters outside of the Latin1 range.",
+        "InvalidCharacterError",
+      );
+    }
+    throw e;
+  }
+}
+
+
+//   4 fetch
+function fetch(input, init = {}) {
+  // There is an async dispatch later that causes a stack trace disconnect.
+  // We reconnect it by assigning the result of that dispatch to `opPromise`,
+  // awaiting `opPromise` in an inner function also named `fetch()` and
+  // returning the result from that.
+  let opPromise = undefined;
+  // 1.
+  const result = new Promise((resolve, reject) => {
+    const prefix = "Failed to call 'fetch'";
+    webidl.requiredArguments(arguments.length, 1, prefix);
+    // 2.
+    const requestObject = new Request(input, init);
+    // 3.
+    const request = toInnerRequest(requestObject);
+    // 4.
+    if (requestObject.signal.aborted) {
+      reject(abortFetch(request, null, requestObject.signal.reason));
+      return;
+    }
+
+    // 7.
+    let responseObject = null;
+    // 9.
+    let locallyAborted = false;
+    // 10.
+    function onabort() {
+      locallyAborted = true;
+      reject(
+        abortFetch(request, responseObject, requestObject.signal.reason),
+      );
+    }
+    requestObject.signal[abortSignal.add](onabort);
+
+    if (!requestObject.headers.has("Accept")) {
+      ArrayPrototypePush(request.headerList, ["Accept", "*/*"]);
+    }
+
+    if (!requestObject.headers.has("Accept-Language")) {
+      ArrayPrototypePush(request.headerList, ["Accept-Language", "*"]);
+    }
+
+    // 12.
+    opPromise = PromisePrototypeCatch(
+      PromisePrototypeThen(
+        mainFetch(request, false, requestObject.signal),
+        (response) => {
+          // 12.1.
+          if (locallyAborted) return;
+          // 12.2.
+          if (response.aborted) {
+            reject(
+              abortFetch(
+                request,
+                responseObject,
+                requestObject.signal.reason,
+              ),
+            );
+            requestObject.signal[abortSignal.remove](onabort);
+            return;
+          }
+          // 12.3.
+          if (response.type === "error") {
+            const err = new TypeError(
+              "Fetch failed: " + (response.error ?? "unknown error"),
+            );
+            reject(err);
+            requestObject.signal[abortSignal.remove](onabort);
+            return;
+          }
+          responseObject = fromInnerResponse(response, "immutable");
+          resolve(responseObject);
+          requestObject.signal[abortSignal.remove](onabort);
+        },
+      ),
+      (err) => {
+        reject(err);
+        requestObject.signal[abortSignal.remove](onabort);
+      },
+    );
+  });
+  if (opPromise) {
+    PromisePrototypeCatch(result, () => {});
+    return (async function fetch() {
+      await opPromise;
+      return result;
+    })();
+  }
+  return result;
+}
+
+
+//   5 EventSource
+class EventSource extends EventTarget {
+/** @type {AbortController} */
+[_abortController] = new AbortController();
+
+/** @type {number} */
+[_reconnectionTime] = 5000;
+
+/** @type {string} */
+[_lastEventID] = "";
+
+/** @type {number} */
+[_readyState] = CONNECTING;
+get readyState() {
+  webidl.assertBranded(this, EventSourcePrototype);
+  return this[_readyState];
+}
+
+get CONNECTING() {
+  webidl.assertBranded(this, EventSourcePrototype);
+  return CONNECTING;
+}
+get OPEN() {
+  webidl.assertBranded(this, EventSourcePrototype);
+  return OPEN;
+}
+get CLOSED() {
+  webidl.assertBranded(this, EventSourcePrototype);
+  return CLOSED;
+}
+
+/** @type {string} */
+[_url];
+get url() {
+  webidl.assertBranded(this, EventSourcePrototype);
+  return this[_url];
+}
+
+/** @type {boolean} */
+[_withCredentials];
+get withCredentials() {
+  webidl.assertBranded(this, EventSourcePrototype);
+  return this[_withCredentials];
+}
+
+constructor(url, eventSourceInitDict = {}) {
+  super();
+  this[webidl.brand] = webidl.brand;
+  const prefix = "Failed to construct 'EventSource'";
+  webidl.requiredArguments(arguments.length, 1, {
+    prefix,
+  });
+  url = webidl.converters.USVString(url, {
+    prefix,
+    context: "Argument 1",
+  });
+  eventSourceInitDict = webidl.converters.EventSourceInit(
+    eventSourceInitDict,
+    {
+      prefix,
+      context: "Argument 2",
+    },
+  );
+
+  try {
+    url = new URL(url, getLocationHref()).href;
+  } catch (e) {
+    throw new DOMException(e.message, "SyntaxError");
+  }
+
+  this[_url] = url;
+  this[_withCredentials] = eventSourceInitDict.withCredentials;
+
+  this[_loop]();
+}
+
+close() {
+  webidl.assertBranded(this, EventSourcePrototype);
+  this[_abortController].abort();
+  this[_readyState] = CLOSED;
+}
+
+async [_loop]() {
+  let lastEventIDValue = "";
+  while (this[_readyState] !== CLOSED) {
+    const lastEventIDValueCopy = lastEventIDValue;
+    lastEventIDValue = "";
+    const req = newInnerRequest(
+      "GET",
+      this[_url],
+      () =>
+        lastEventIDValueCopy === ""
+          ? [
+            ["accept", "text/event-stream"],
+          ]
+          : [
+            ["accept", "text/event-stream"],
+            [
+              "Last-Event-Id",
+              core.ops.op_utf8_to_byte_string(lastEventIDValueCopy),
+            ],
+          ],
+      null,
+      false,
+    );
+    /** @type {InnerResponse} */
+    const res = await mainFetch(req, true, this[_abortController].signal);
+
+    const contentType = ArrayPrototypeFind(
+      res.headerList,
+      (header) => StringPrototypeToLowerCase(header[0]) === "content-type",
+    );
+    if (res.type === "error") {
+      if (res.aborted) {
+        this[_readyState] = CLOSED;
+        this.dispatchEvent(new Event("error"));
+        break;
+      } else {
+        if (this[_readyState] === CLOSED) {
+          this[_abortController].abort();
+          break;
+        }
+        this[_readyState] = CONNECTING;
+        this.dispatchEvent(new Event("error"));
+        await new Promise((res) => setTimeout(res, this[_reconnectionTime]));
+        if (this[_readyState] !== CONNECTING) {
+          continue;
+        }
+
+        if (this[_lastEventID] !== "") {
+          lastEventIDValue = this[_lastEventID];
+        }
+        continue;
+      }
+    } else if (
+      res.status !== 200 ||
+      !StringPrototypeIncludes(
+        contentType?.[1].toLowerCase(),
+        "text/event-stream",
+      )
+    ) {
+      this[_readyState] = CLOSED;
+      this.dispatchEvent(new Event("error"));
+      break;
+    }
+
+    if (this[_readyState] !== CLOSED) {
+      this[_readyState] = OPEN;
+      this.dispatchEvent(new Event("open"));
+
+      let data = "";
+      let eventType = "";
+      let lastEventID = this[_lastEventID];
+
+      for await (
+        // deno-lint-ignore prefer-primordials
+        const chunk of res.body.stream
+          .pipeThrough(new TextDecoderStream())
+          .pipeThrough(new TextLineStream({ allowCR: true }))
+      ) {
+        if (chunk === "") {
+          this[_lastEventID] = lastEventID;
+          if (data === "") {
+            eventType = "";
+            continue;
+          }
+          if (StringPrototypeEndsWith(data, "\n")) {
+            data = StringPrototypeSlice(data, 0, -1);
+          }
+          const event = new MessageEvent(eventType || "message", {
+            data,
+            origin: res.url(),
+            lastEventId: this[_lastEventID],
+          });
+          setIsTrusted(event, true);
+          data = "";
+          eventType = "";
+          if (this[_readyState] !== CLOSED) {
+            this.dispatchEvent(event);
+          }
+        } else if (StringPrototypeStartsWith(chunk, ":")) {
+          continue;
+        } else {
+          let field = chunk;
+          let value = "";
+          if (StringPrototypeIncludes(chunk, ":")) {
+            ({ 0: field, 1: value } = StringPrototypeSplit(chunk, ":"));
+            if (StringPrototypeStartsWith(value, " ")) {
+              value = StringPrototypeSlice(value, 1);
+            }
+          }
+
+          switch (field) {
+            case "event": {
+              eventType = value;
+              break;
+            }
+            case "data": {
+              data += value + "\n";
+              break;
+            }
+            case "id": {
+              if (!StringPrototypeIncludes(value, "\0")) {
+                lastEventID = value;
+              }
+              break;
+            }
+            case "retry": {
+              const reconnectionTime = Number(value);
+              if (
+                !NumberIsNaN(reconnectionTime) &&
+                NumberIsFinite(reconnectionTime)
+              ) {
+                this[_reconnectionTime] = reconnectionTime;
+              }
+              break;
+            }
+          }
+        }
+
+        if (this[_abortController].signal.aborted) {
+          break;
+        }
+      }
+      if (this[_readyState] === CLOSED) {
+        this[_abortController].abort();
+        break;
+      }
+      this[_readyState] = CONNECTING;
+      this.dispatchEvent(new Event("error"));
+      await new Promise((res) => setTimeout(res, this[_reconnectionTime]));
+      if (this[_readyState] !== CONNECTING) {
+        continue;
+      }
+
+      if (this[_lastEventID] !== "") {
+        lastEventIDValue = this[_lastEventID];
+      }
+    }
+  }
+}
+
+[SymbolFor("Deno.privateCustomInspect")](inspect, inspectOptions) {
+  return inspect(
+    createFilteredInspectProxy({
+      object: this,
+      evaluate: ObjectPrototypeIsPrototypeOf(EventSourcePrototype, this),
+      keys: [
+        "readyState",
+        "url",
+        "withCredentials",
+        "onopen",
+        "onmessage",
+        "onerror",
+      ],
+    }),
+    inspectOptions,
+  );
+}
+}
+
+
+//   6 reportError
+function reportError(error) {
+  checkThis(this);
+  const prefix = "Failed to call 'reportError'";
+  webidl.requiredArguments(arguments.length, 1, prefix);
+  reportException(error);
+}
+
+
+//   7 structuredClone
+function structuredClone(value, options) {
+  const prefix = "Failed to execute 'structuredClone'";
+  webidl.requiredArguments(arguments.length, 1, prefix);
+  options = webidl.converters.StructuredSerializeOptions(
+    options,
+    prefix,
+    "Argument 2",
+  );
+  const messageData = serializeJsMessageData(value, options.transfer);
+  return deserializeJsMessageData(messageData)[0];
+}
+
+
+//   8 alert
+function alert(message = "Alert") {
+  if (!isatty(stdin.rid)) {
+    return;
+  }
+
+  core.print(
+    `${yellow(bold(`${message}`))} [${italic("Press any key to continue")}] `,
+  );
+
+  try {
+    stdin.setRaw(true);
+    stdin.readSync(new Uint8Array(1024));
+  } finally {
+    stdin.setRaw(false);
+  }
+
+  core.print("\n");
+}
+
+
+//   9 confirm
+function confirm(message = "Confirm") {
+  if (!isatty(stdin.rid)) {
+    return false;
+  }
+
+  core.print(`${yellow(bold(`${message}`))} [${italic("Y/n")}] `);
+
+  let val = false;
+  try {
+    stdin.setRaw(true);
+
+    while (true) {
+      const b = new Uint8Array(1024);
+      stdin.readSync(b);
+      let byteString = "";
+
+      let i = 0;
+      while (b[i]) byteString += StringFromCodePoint(b[i++]);
+
+      if (inputMap.has(byteString)) {
+        val = inputMap.get(byteString);
+        break;
+      }
+    }
+  } finally {
+    stdin.setRaw(false);
+  }
+
+  core.print(`${val ? "y" : "n"}\n`);
+  return val;
+}
+
+
+//  10 prompt
+function prompt(message = "Prompt", defaultValue = "") {
+  if (!isatty(stdin.rid)) {
+    return null;
+  }
+
+  return ops.op_read_line_prompt(
+    `${message} `,
+    `${defaultValue}`,
+  );
+}
+
+
+//  11 close
+function windowClose() {
+  if (!windowIsClosing) {
+    windowIsClosing = true;
+    // Push a macrotask to exit after a promise resolve.
+    // This is not perfect, but should be fine for first pass.
+    PromisePrototypeThen(
+      PromiseResolve(),
+      () =>
+        FunctionPrototypeCall(timers.setTimeout, null, () => {
+          // This should be fine, since only Window/MainWorker has .close()
+          os.exit(0);
+        }, 0),
+    );
+  }
+}
+
+
+//  12 clearInterval
+function clearInterval(id = 0) {
+  checkThis(this);
+  clearTimeout(id);
+}
+
+
+//  13 clearTimeout
+function clearTimeout(id = 0) {
+  checkThis(this);
+  id = webidl.converters.long(id);
+  const timerInfo = MapPrototypeGet(activeTimers, id);
+  if (timerInfo !== undefined) {
+    core.tryClose(timerInfo.cancelRid);
+    MapPrototypeDelete(activeTimers, id);
+  }
+}
+
+
+//  14 setInterval
+function setInterval(callback, timeout = 0, ...args) {
+  checkThis(this);
+  if (typeof callback !== "function") {
+    callback = webidl.converters.DOMString(callback);
+  }
+  timeout = webidl.converters.long(timeout);
+
+  return initializeTimer(callback, timeout, args, true);
+}
+
+
+//  15 setTimeout
+function setTimeout(callback, timeout = 0, ...args) {
+  checkThis(this);
+  if (typeof callback !== "function") {
+    callback = webidl.converters.DOMString(callback);
+  }
+  timeout = webidl.converters.long(timeout);
+
+  return initializeTimer(callback, timeout, args, false);
+}
+
+
+//  16 addEventListener
+addEventListener(
+  type,
+  callback,
+  options,
+) {
+  const self = this ?? globalThis_;
+  webidl.assertBranded(self, EventTargetPrototype);
+  const prefix = "Failed to execute 'addEventListener' on 'EventTarget'";
+
+  webidl.requiredArguments(arguments.length, 2, prefix);
+
+  options = addEventListenerOptionsConverter(options, prefix);
+
+  if (callback === null) {
+    return;
+  }
+
+  const { listeners } = self[eventTargetData];
+
+  if (!listeners[type]) {
+    listeners[type] = [];
+  }
+
+  const listenerList = listeners[type];
+  for (let i = 0; i < listenerList.length; ++i) {
+    const listener = listenerList[i];
+    if (
+      ((typeof listener.options === "boolean" &&
+        listener.options === options.capture) ||
+        (typeof listener.options === "object" &&
+          listener.options.capture === options.capture)) &&
+      listener.callback === callback
+    ) {
+      return;
+    }
+  }
+  if (options?.signal) {
+    const signal = options?.signal;
+    if (signal.aborted) {
+      // If signal is not null and its aborted flag is set, then return.
+      return;
+    } else {
+      // If listener's signal is not null, then add the following abort
+      // abort steps to it: Remove an event listener.
+      signal.addEventListener("abort", () => {
+        self.removeEventListener(type, callback, options);
+      });
+    }
+  }
+
+  ArrayPrototypePush(listeners[type], { callback, options });
+}
+
+
+//  17 removeEventListener
+removeEventListener(
+  type,
+  callback,
+  options,
+) {
+  const self = this ?? globalThis_;
+  webidl.assertBranded(self, EventTargetPrototype);
+  webidl.requiredArguments(
+    arguments.length,
+    2,
+    "Failed to execute 'removeEventListener' on 'EventTarget'",
+  );
+
+  const { listeners } = self[eventTargetData];
+  if (callback !== null && listeners[type]) {
+    listeners[type] = ArrayPrototypeFilter(
+      listeners[type],
+      (listener) => listener.callback !== callback,
+    );
+  } else if (callback === null || !listeners[type]) {
+    return;
+  }
+
+  options = normalizeEventHandlerOptions(options);
+
+  for (let i = 0; i < listeners[type].length; ++i) {
+    const listener = listeners[type][i];
+    if (
+      ((typeof listener.options === "boolean" &&
+        listener.options === options.capture) ||
+        (typeof listener.options === "object" &&
+          listener.options.capture === options.capture)) &&
+      listener.callback === callback
+    ) {
+      ArrayPrototypeSplice(listeners[type], i, 1);
+      break;
+    }
+  }
+}
+
+
+//  18 dispatchEvent
+dispatchEvent(event) {
+  // If `this` is not present, then fallback to global scope. We don't use
+  // `globalThis` directly here, because it could be deleted by user.
+  // Instead use saved reference to global scope when the script was
+  // executed.
+  const self = this ?? globalThis_;
+  webidl.assertBranded(self, EventTargetPrototype);
+  webidl.requiredArguments(
+    arguments.length,
+    1,
+    "Failed to execute 'dispatchEvent' on 'EventTarget'",
+  );
+
+  // This is an optimization to avoid creating an event listener
+  // on each startup.
+  // Stores the flag for checking whether unload is dispatched or not.
+  // This prevents the recursive dispatches of unload events.
+  // See https://github.com/denoland/deno/issues/9201.
+  if (event.type === "unload" && self === globalThis_) {
+    globalThis_[SymbolFor("Deno.isUnloadDispatched")] = true;
+  }
+
+  const { listeners } = self[eventTargetData];
+  if (!listeners[event.type]) {
+    setTarget(event, this);
+    return true;
+  }
+
+  if (getDispatched(event)) {
+    throw new DOMException("Invalid event state.", "InvalidStateError");
+  }
+
+  if (event.eventPhase !== Event.NONE) {
+    throw new DOMException("Invalid event state.", "InvalidStateError");
+  }
+
+  return dispatch(self, event);
+}
+
+
+//  19 getParent
+getParent(_event) {
+  return null;
+}
+
+object count: 8
+1 globalThis.caches
+1.1 globalThis.caches.open function 
+1.2 globalThis.caches.has function 
+1.3 globalThis.caches.delete function 
+2 globalThis.crypto
+2.1 globalThis.crypto.getRandomValues function 
+2.2 globalThis.crypto.randomUUID function 
+2.3 globalThis.crypto.subtle object 
+2.3.1 globalThis.crypto.subtle.digest function 
+2.3.2 globalThis.crypto.subtle.encrypt function 
+2.3.3 globalThis.crypto.subtle.decrypt function 
+2.3.4 globalThis.crypto.subtle.sign function 
+2.3.5 globalThis.crypto.subtle.importKey function 
+2.3.6 globalThis.crypto.subtle.exportKey function 
+2.3.7 globalThis.crypto.subtle.deriveBits function 
+2.3.8 globalThis.crypto.subtle.deriveKey function 
+2.3.9 globalThis.crypto.subtle.verify function 
+2.3.10 globalThis.crypto.subtle.wrapKey function 
+2.3.11 globalThis.crypto.subtle.unwrapKey function 
+2.3.12 globalThis.crypto.subtle.generateKey function 
+3 globalThis.self
+3.1 globalThis.self.queueMicrotask function 
+3.2 globalThis.self.atob function 
+3.3 globalThis.self.btoa function 
+3.4 globalThis.self.caches object 
+3.4.1 globalThis.self.caches.open function 
+3.4.2 globalThis.self.caches.has function 
+3.4.3 globalThis.self.caches.delete function 
+3.5 globalThis.self.crypto object 
+3.5.1 globalThis.self.crypto.getRandomValues function 
+3.5.2 globalThis.self.crypto.randomUUID function 
+3.5.3 globalThis.self.crypto.subtle object 
+3.5.3.1 globalThis.self.crypto.subtle.digest function 
+3.5.3.2 globalThis.self.crypto.subtle.encrypt function 
+3.5.3.3 globalThis.self.crypto.subtle.decrypt function 
+3.5.3.4 globalThis.self.crypto.subtle.sign function 
+3.5.3.5 globalThis.self.crypto.subtle.importKey function 
+3.5.3.6 globalThis.self.crypto.subtle.exportKey function 
+3.5.3.7 globalThis.self.crypto.subtle.deriveBits function 
+3.5.3.8 globalThis.self.crypto.subtle.deriveKey function 
+3.5.3.9 globalThis.self.crypto.subtle.verify function 
+3.5.3.10 globalThis.self.crypto.subtle.wrapKey function 
+3.5.3.11 globalThis.self.crypto.subtle.unwrapKey function 
+3.5.3.12 globalThis.self.crypto.subtle.generateKey function 
+3.6 globalThis.self.fetch function 
+3.7 globalThis.self.EventSource function 
+3.8 globalThis.self.reportError function 
+3.9 globalThis.self.structuredClone function 
+3.10 globalThis.self.self object 
+3.10.1 globalThis.self.self.queueMicrotask function 
+3.10.2 globalThis.self.self.atob function 
+3.10.3 globalThis.self.self.btoa function 
+3.10.4 globalThis.self.self.caches object 
+3.10.4.1 globalThis.self.self.caches.open function 
+3.10.4.2 globalThis.self.self.caches.has function 
+3.10.4.3 globalThis.self.self.caches.delete function 
+3.10.5 globalThis.self.self.crypto object 
+3.10.5.1 globalThis.self.self.crypto.getRandomValues function 
+3.10.5.2 globalThis.self.self.crypto.randomUUID function 
+3.10.5.3 globalThis.self.self.crypto.subtle object 
+3.10.6 globalThis.self.self.fetch function 
+3.10.7 globalThis.self.self.EventSource function 
+3.10.8 globalThis.self.self.reportError function 
+3.10.9 globalThis.self.self.structuredClone function 
+3.10.10 globalThis.self.self.self object 
+3.10.10.1 globalThis.self.self.self.queueMicrotask function 
+3.10.10.2 globalThis.self.self.self.atob function 
+3.10.10.3 globalThis.self.self.self.btoa function 
+3.10.10.4 globalThis.self.self.self.caches object 
+3.10.10.5 globalThis.self.self.self.crypto object 
+3.10.10.6 globalThis.self.self.self.fetch function 
+3.10.10.7 globalThis.self.self.self.EventSource function 
+3.10.10.8 globalThis.self.self.self.reportError function 
+3.10.10.9 globalThis.self.self.self.structuredClone function 
+3.10.10.10 globalThis.self.self.self.self object 
+3.10.10.11 globalThis.self.self.self.navigator object 
+3.10.10.12 globalThis.self.self.self.alert function 
+3.10.10.13 globalThis.self.self.self.confirm function 
+3.10.10.14 globalThis.self.self.self.prompt function 
+3.10.10.15 globalThis.self.self.self.localStorage object 
+3.10.10.16 globalThis.self.self.self.sessionStorage object 
+3.10.10.17 globalThis.self.self.self.name string 
+3.10.10.18 globalThis.self.self.self.close function 
+3.10.10.19 globalThis.self.self.self.closed boolean false
+3.10.10.20 globalThis.self.self.self.onerror object 
+3.10.10.21 globalThis.self.self.self.onload object 
+3.10.10.22 globalThis.self.self.self.onbeforeunload object 
+3.10.10.23 globalThis.self.self.self.onunload object 
+3.10.10.24 globalThis.self.self.self.onunhandledrejection object 
+3.10.10.25 globalThis.self.self.self.clearInterval function 
+3.10.10.26 globalThis.self.self.self.clearTimeout function 
+3.10.10.27 globalThis.self.self.self.performance object 
+3.10.10.28 globalThis.self.self.self.setInterval function 
+3.10.10.29 globalThis.self.self.self.setTimeout function 
+3.10.10.30 globalThis.self.self.self.window object 
+3.10.10.31 globalThis.self.self.self.addEventListener function 
+3.10.10.32 globalThis.self.self.self.removeEventListener function 
+3.10.10.33 globalThis.self.self.self.dispatchEvent function 
+3.10.10.34 globalThis.self.self.self.getParent function 
+3.10.11 globalThis.self.self.navigator object 
+3.10.11.1 globalThis.self.self.navigator.gpu object 
+3.10.11.2 globalThis.self.self.navigator.hardwareConcurrency number 8
+3.10.11.3 globalThis.self.self.navigator.userAgent string Deno/1.39.0
+3.10.11.4 globalThis.self.self.navigator.language string en-US
+3.10.11.5 globalThis.self.self.navigator.languages object 
+3.10.12 globalThis.self.self.alert function 
+3.10.13 globalThis.self.self.confirm function 
+3.10.14 globalThis.self.self.prompt function 
+3.10.15 globalThis.self.self.localStorage object 
+3.10.16 globalThis.self.self.sessionStorage object 
+3.10.17 globalThis.self.self.name string 
+3.10.18 globalThis.self.self.close function 
+3.10.19 globalThis.self.self.closed boolean false
+3.10.20 globalThis.self.self.onerror object 
+3.10.21 globalThis.self.self.onload object 
+3.10.22 globalThis.self.self.onbeforeunload object 
+3.10.23 globalThis.self.self.onunload object 
+3.10.24 globalThis.self.self.onunhandledrejection object 
+3.10.25 globalThis.self.self.clearInterval function 
+3.10.26 globalThis.self.self.clearTimeout function 
+3.10.27 globalThis.self.self.performance object 
+3.10.27.1 globalThis.self.self.performance.timeOrigin number 1703064186783
+3.10.27.2 globalThis.self.self.performance.clearMarks function 
+3.10.27.3 globalThis.self.self.performance.clearMeasures function 
+3.10.27.4 globalThis.self.self.performance.getEntries function 
+3.10.27.5 globalThis.self.self.performance.getEntriesByName function 
+3.10.27.6 globalThis.self.self.performance.getEntriesByType function 
+3.10.27.7 globalThis.self.self.performance.mark function 
+3.10.27.8 globalThis.self.self.performance.measure function 
+3.10.27.9 globalThis.self.self.performance.now function 
+3.10.27.10 globalThis.self.self.performance.toJSON function 
+3.10.27.11 globalThis.self.self.performance.addEventListener function 
+3.10.27.12 globalThis.self.self.performance.removeEventListener function 
+3.10.27.13 globalThis.self.self.performance.dispatchEvent function 
+3.10.27.14 globalThis.self.self.performance.getParent function 
+3.10.28 globalThis.self.self.setInterval function 
+3.10.29 globalThis.self.self.setTimeout function 
+3.10.30 globalThis.self.self.window object 
+3.10.30.1 globalThis.self.self.window.queueMicrotask function 
+3.10.30.2 globalThis.self.self.window.atob function 
+3.10.30.3 globalThis.self.self.window.btoa function 
+3.10.30.4 globalThis.self.self.window.caches object 
+3.10.30.5 globalThis.self.self.window.crypto object 
+3.10.30.6 globalThis.self.self.window.fetch function 
+3.10.30.7 globalThis.self.self.window.EventSource function 
+3.10.30.8 globalThis.self.self.window.reportError function 
+3.10.30.9 globalThis.self.self.window.structuredClone function 
+3.10.30.10 globalThis.self.self.window.self object 
+3.10.30.11 globalThis.self.self.window.navigator object 
+3.10.30.12 globalThis.self.self.window.alert function 
+3.10.30.13 globalThis.self.self.window.confirm function 
+3.10.30.14 globalThis.self.self.window.prompt function 
+3.10.30.15 globalThis.self.self.window.localStorage object 
+3.10.30.16 globalThis.self.self.window.sessionStorage object 
+3.10.30.17 globalThis.self.self.window.name string 
+3.10.30.18 globalThis.self.self.window.close function 
+3.10.30.19 globalThis.self.self.window.closed boolean false
+3.10.30.20 globalThis.self.self.window.onerror object 
+3.10.30.21 globalThis.self.self.window.onload object 
+3.10.30.22 globalThis.self.self.window.onbeforeunload object 
+3.10.30.23 globalThis.self.self.window.onunload object 
+3.10.30.24 globalThis.self.self.window.onunhandledrejection object 
+3.10.30.25 globalThis.self.self.window.clearInterval function 
+3.10.30.26 globalThis.self.self.window.clearTimeout function 
+3.10.30.27 globalThis.self.self.window.performance object 
+3.10.30.28 globalThis.self.self.window.setInterval function 
+3.10.30.29 globalThis.self.self.window.setTimeout function 
+3.10.30.30 globalThis.self.self.window.window object 
+3.10.30.31 globalThis.self.self.window.addEventListener function 
+3.10.30.32 globalThis.self.self.window.removeEventListener function 
+3.10.30.33 globalThis.self.self.window.dispatchEvent function 
+3.10.30.34 globalThis.self.self.window.getParent function 
+3.10.31 globalThis.self.self.addEventListener function 
+3.10.32 globalThis.self.self.removeEventListener function 
+3.10.33 globalThis.self.self.dispatchEvent function 
+3.10.34 globalThis.self.self.getParent function 
+3.11 globalThis.self.navigator object 
+3.11.1 globalThis.self.navigator.gpu object 
+3.11.2 globalThis.self.navigator.hardwareConcurrency number 8
+3.11.3 globalThis.self.navigator.userAgent string Deno/1.39.0
+3.11.4 globalThis.self.navigator.language string en-US
+3.11.5 globalThis.self.navigator.languages object 
+3.11.5.1 globalThis.self.navigator.languages.0 string en-US
+3.12 globalThis.self.alert function 
+3.13 globalThis.self.confirm function 
+3.14 globalThis.self.prompt function 
+3.15 globalThis.self.localStorage object 
+3.16 globalThis.self.sessionStorage object 
+3.17 globalThis.self.name string 
+3.18 globalThis.self.close function 
+3.19 globalThis.self.closed boolean false
+3.20 globalThis.self.onerror object 
+3.21 globalThis.self.onload object 
+3.22 globalThis.self.onbeforeunload object 
+3.23 globalThis.self.onunload object 
+3.24 globalThis.self.onunhandledrejection object 
+3.25 globalThis.self.clearInterval function 
+3.26 globalThis.self.clearTimeout function 
+3.27 globalThis.self.performance object 
+3.27.1 globalThis.self.performance.timeOrigin number 1703064186783
+3.27.2 globalThis.self.performance.clearMarks function 
+3.27.3 globalThis.self.performance.clearMeasures function 
+3.27.4 globalThis.self.performance.getEntries function 
+3.27.5 globalThis.self.performance.getEntriesByName function 
+3.27.6 globalThis.self.performance.getEntriesByType function 
+3.27.7 globalThis.self.performance.mark function 
+3.27.8 globalThis.self.performance.measure function 
+3.27.9 globalThis.self.performance.now function 
+3.27.10 globalThis.self.performance.toJSON function 
+3.27.11 globalThis.self.performance.addEventListener function 
+3.27.12 globalThis.self.performance.removeEventListener function 
+3.27.13 globalThis.self.performance.dispatchEvent function 
+3.27.14 globalThis.self.performance.getParent function 
+3.28 globalThis.self.setInterval function 
+3.29 globalThis.self.setTimeout function 
+3.30 globalThis.self.window object 
+3.30.1 globalThis.self.window.queueMicrotask function 
+3.30.2 globalThis.self.window.atob function 
+3.30.3 globalThis.self.window.btoa function 
+3.30.4 globalThis.self.window.caches object 
+3.30.4.1 globalThis.self.window.caches.open function 
+3.30.4.2 globalThis.self.window.caches.has function 
+3.30.4.3 globalThis.self.window.caches.delete function 
+3.30.5 globalThis.self.window.crypto object 
+3.30.5.1 globalThis.self.window.crypto.getRandomValues function 
+3.30.5.2 globalThis.self.window.crypto.randomUUID function 
+3.30.5.3 globalThis.self.window.crypto.subtle object 
+3.30.6 globalThis.self.window.fetch function 
+3.30.7 globalThis.self.window.EventSource function 
+3.30.8 globalThis.self.window.reportError function 
+3.30.9 globalThis.self.window.structuredClone function 
+3.30.10 globalThis.self.window.self object 
+3.30.10.1 globalThis.self.window.self.queueMicrotask function 
+3.30.10.2 globalThis.self.window.self.atob function 
+3.30.10.3 globalThis.self.window.self.btoa function 
+3.30.10.4 globalThis.self.window.self.caches object 
+3.30.10.5 globalThis.self.window.self.crypto object 
+3.30.10.6 globalThis.self.window.self.fetch function 
+3.30.10.7 globalThis.self.window.self.EventSource function 
+3.30.10.8 globalThis.self.window.self.reportError function 
+3.30.10.9 globalThis.self.window.self.structuredClone function 
+3.30.10.10 globalThis.self.window.self.self object 
+3.30.10.11 globalThis.self.window.self.navigator object 
+3.30.10.12 globalThis.self.window.self.alert function 
+3.30.10.13 globalThis.self.window.self.confirm function 
+3.30.10.14 globalThis.self.window.self.prompt function 
+3.30.10.15 globalThis.self.window.self.localStorage object 
+3.30.10.16 globalThis.self.window.self.sessionStorage object 
+3.30.10.17 globalThis.self.window.self.name string 
+3.30.10.18 globalThis.self.window.self.close function 
+3.30.10.19 globalThis.self.window.self.closed boolean false
+3.30.10.20 globalThis.self.window.self.onerror object 
+3.30.10.21 globalThis.self.window.self.onload object 
+3.30.10.22 globalThis.self.window.self.onbeforeunload object 
+3.30.10.23 globalThis.self.window.self.onunload object 
+3.30.10.24 globalThis.self.window.self.onunhandledrejection object 
+3.30.10.25 globalThis.self.window.self.clearInterval function 
+3.30.10.26 globalThis.self.window.self.clearTimeout function 
+3.30.10.27 globalThis.self.window.self.performance object 
+3.30.10.28 globalThis.self.window.self.setInterval function 
+3.30.10.29 globalThis.self.window.self.setTimeout function 
+3.30.10.30 globalThis.self.window.self.window object 
+3.30.10.31 globalThis.self.window.self.addEventListener function 
+3.30.10.32 globalThis.self.window.self.removeEventListener function 
+3.30.10.33 globalThis.self.window.self.dispatchEvent function 
+3.30.10.34 globalThis.self.window.self.getParent function 
+3.30.11 globalThis.self.window.navigator object 
+3.30.11.1 globalThis.self.window.navigator.gpu object 
+3.30.11.2 globalThis.self.window.navigator.hardwareConcurrency number 8
+3.30.11.3 globalThis.self.window.navigator.userAgent string Deno/1.39.0
+3.30.11.4 globalThis.self.window.navigator.language string en-US
+3.30.11.5 globalThis.self.window.navigator.languages object 
+3.30.12 globalThis.self.window.alert function 
+3.30.13 globalThis.self.window.confirm function 
+3.30.14 globalThis.self.window.prompt function 
+3.30.15 globalThis.self.window.localStorage object 
+3.30.16 globalThis.self.window.sessionStorage object 
+3.30.17 globalThis.self.window.name string 
+3.30.18 globalThis.self.window.close function 
+3.30.19 globalThis.self.window.closed boolean false
+3.30.20 globalThis.self.window.onerror object 
+3.30.21 globalThis.self.window.onload object 
+3.30.22 globalThis.self.window.onbeforeunload object 
+3.30.23 globalThis.self.window.onunload object 
+3.30.24 globalThis.self.window.onunhandledrejection object 
+3.30.25 globalThis.self.window.clearInterval function 
+3.30.26 globalThis.self.window.clearTimeout function 
+3.30.27 globalThis.self.window.performance object 
+3.30.27.1 globalThis.self.window.performance.timeOrigin number 1703064186783
+3.30.27.2 globalThis.self.window.performance.clearMarks function 
+3.30.27.3 globalThis.self.window.performance.clearMeasures function 
+3.30.27.4 globalThis.self.window.performance.getEntries function 
+3.30.27.5 globalThis.self.window.performance.getEntriesByName function 
+3.30.27.6 globalThis.self.window.performance.getEntriesByType function 
+3.30.27.7 globalThis.self.window.performance.mark function 
+3.30.27.8 globalThis.self.window.performance.measure function 
+3.30.27.9 globalThis.self.window.performance.now function 
+3.30.27.10 globalThis.self.window.performance.toJSON function 
+3.30.27.11 globalThis.self.window.performance.addEventListener function 
+3.30.27.12 globalThis.self.window.performance.removeEventListener function 
+3.30.27.13 globalThis.self.window.performance.dispatchEvent function 
+3.30.27.14 globalThis.self.window.performance.getParent function 
+3.30.28 globalThis.self.window.setInterval function 
+3.30.29 globalThis.self.window.setTimeout function 
+3.30.30 globalThis.self.window.window object 
+3.30.30.1 globalThis.self.window.window.queueMicrotask function 
+3.30.30.2 globalThis.self.window.window.atob function 
+3.30.30.3 globalThis.self.window.window.btoa function 
+3.30.30.4 globalThis.self.window.window.caches object 
+3.30.30.5 globalThis.self.window.window.crypto object 
+3.30.30.6 globalThis.self.window.window.fetch function 
+3.30.30.7 globalThis.self.window.window.EventSource function 
+3.30.30.8 globalThis.self.window.window.reportError function 
+3.30.30.9 globalThis.self.window.window.structuredClone function 
+3.30.30.10 globalThis.self.window.window.self object 
+3.30.30.11 globalThis.self.window.window.navigator object 
+3.30.30.12 globalThis.self.window.window.alert function 
+3.30.30.13 globalThis.self.window.window.confirm function 
+3.30.30.14 globalThis.self.window.window.prompt function 
+3.30.30.15 globalThis.self.window.window.localStorage object 
+3.30.30.16 globalThis.self.window.window.sessionStorage object 
+3.30.30.17 globalThis.self.window.window.name string 
+3.30.30.18 globalThis.self.window.window.close function 
+3.30.30.19 globalThis.self.window.window.closed boolean false
+3.30.30.20 globalThis.self.window.window.onerror object 
+3.30.30.21 globalThis.self.window.window.onload object 
+3.30.30.22 globalThis.self.window.window.onbeforeunload object 
+3.30.30.23 globalThis.self.window.window.onunload object 
+3.30.30.24 globalThis.self.window.window.onunhandledrejection object 
+3.30.30.25 globalThis.self.window.window.clearInterval function 
+3.30.30.26 globalThis.self.window.window.clearTimeout function 
+3.30.30.27 globalThis.self.window.window.performance object 
+3.30.30.28 globalThis.self.window.window.setInterval function 
+3.30.30.29 globalThis.self.window.window.setTimeout function 
+3.30.30.30 globalThis.self.window.window.window object 
+3.30.30.31 globalThis.self.window.window.addEventListener function 
+3.30.30.32 globalThis.self.window.window.removeEventListener function 
+3.30.30.33 globalThis.self.window.window.dispatchEvent function 
+3.30.30.34 globalThis.self.window.window.getParent function 
+3.30.31 globalThis.self.window.addEventListener function 
+3.30.32 globalThis.self.window.removeEventListener function 
+3.30.33 globalThis.self.window.dispatchEvent function 
+3.30.34 globalThis.self.window.getParent function 
+3.31 globalThis.self.addEventListener function 
+3.32 globalThis.self.removeEventListener function 
+3.33 globalThis.self.dispatchEvent function 
+3.34 globalThis.self.getParent function 
+4 globalThis.navigator
+4.1 globalThis.navigator.gpu object 
+4.2 globalThis.navigator.hardwareConcurrency number 8
+4.3 globalThis.navigator.userAgent string Deno/1.39.0
+4.4 globalThis.navigator.language string en-US
+4.5 globalThis.navigator.languages object 
+4.5.1 globalThis.navigator.languages.0 string en-US
+5 globalThis.localStorage
+6 globalThis.sessionStorage
+7 globalThis.performance
+7.1 globalThis.performance.timeOrigin number 1703064186783
+7.2 globalThis.performance.clearMarks function 
+7.3 globalThis.performance.clearMeasures function 
+7.4 globalThis.performance.getEntries function 
+7.5 globalThis.performance.getEntriesByName function 
+7.6 globalThis.performance.getEntriesByType function 
+7.7 globalThis.performance.mark function 
+7.8 globalThis.performance.measure function 
+7.9 globalThis.performance.now function 
+7.10 globalThis.performance.toJSON function 
+7.11 globalThis.performance.addEventListener function 
+7.12 globalThis.performance.removeEventListener function 
+7.13 globalThis.performance.dispatchEvent function 
+7.14 globalThis.performance.getParent function 
+8 globalThis.window
+8.1 globalThis.window.queueMicrotask function 
+8.2 globalThis.window.atob function 
+8.3 globalThis.window.btoa function 
+8.4 globalThis.window.caches object 
+8.4.1 globalThis.window.caches.open function 
+8.4.2 globalThis.window.caches.has function 
+8.4.3 globalThis.window.caches.delete function 
+8.5 globalThis.window.crypto object 
+8.5.1 globalThis.window.crypto.getRandomValues function 
+8.5.2 globalThis.window.crypto.randomUUID function 
+8.5.3 globalThis.window.crypto.subtle object 
+8.5.3.1 globalThis.window.crypto.subtle.digest function 
+8.5.3.2 globalThis.window.crypto.subtle.encrypt function 
+8.5.3.3 globalThis.window.crypto.subtle.decrypt function 
+8.5.3.4 globalThis.window.crypto.subtle.sign function 
+8.5.3.5 globalThis.window.crypto.subtle.importKey function 
+8.5.3.6 globalThis.window.crypto.subtle.exportKey function 
+8.5.3.7 globalThis.window.crypto.subtle.deriveBits function 
+8.5.3.8 globalThis.window.crypto.subtle.deriveKey function 
+8.5.3.9 globalThis.window.crypto.subtle.verify function 
+8.5.3.10 globalThis.window.crypto.subtle.wrapKey function 
+8.5.3.11 globalThis.window.crypto.subtle.unwrapKey function 
+8.5.3.12 globalThis.window.crypto.subtle.generateKey function 
+8.6 globalThis.window.fetch function 
+8.7 globalThis.window.EventSource function 
+8.8 globalThis.window.reportError function 
+8.9 globalThis.window.structuredClone function 
+8.10 globalThis.window.self object 
+8.10.1 globalThis.window.self.queueMicrotask function 
+8.10.2 globalThis.window.self.atob function 
+8.10.3 globalThis.window.self.btoa function 
+8.10.4 globalThis.window.self.caches object 
+8.10.4.1 globalThis.window.self.caches.open function 
+8.10.4.2 globalThis.window.self.caches.has function 
+8.10.4.3 globalThis.window.self.caches.delete function 
+8.10.5 globalThis.window.self.crypto object 
+8.10.5.1 globalThis.window.self.crypto.getRandomValues function 
+8.10.5.2 globalThis.window.self.crypto.randomUUID function 
+8.10.5.3 globalThis.window.self.crypto.subtle object 
+8.10.6 globalThis.window.self.fetch function 
+8.10.7 globalThis.window.self.EventSource function 
+8.10.8 globalThis.window.self.reportError function 
+8.10.9 globalThis.window.self.structuredClone function 
+8.10.10 globalThis.window.self.self object 
+8.10.10.1 globalThis.window.self.self.queueMicrotask function 
+8.10.10.2 globalThis.window.self.self.atob function 
+8.10.10.3 globalThis.window.self.self.btoa function 
+8.10.10.4 globalThis.window.self.self.caches object 
+8.10.10.5 globalThis.window.self.self.crypto object 
+8.10.10.6 globalThis.window.self.self.fetch function 
+8.10.10.7 globalThis.window.self.self.EventSource function 
+8.10.10.8 globalThis.window.self.self.reportError function 
+8.10.10.9 globalThis.window.self.self.structuredClone function 
+8.10.10.10 globalThis.window.self.self.self object 
+8.10.10.11 globalThis.window.self.self.navigator object 
+8.10.10.12 globalThis.window.self.self.alert function 
+8.10.10.13 globalThis.window.self.self.confirm function 
+8.10.10.14 globalThis.window.self.self.prompt function 
+8.10.10.15 globalThis.window.self.self.localStorage object 
+8.10.10.16 globalThis.window.self.self.sessionStorage object 
+8.10.10.17 globalThis.window.self.self.name string 
+8.10.10.18 globalThis.window.self.self.close function 
+8.10.10.19 globalThis.window.self.self.closed boolean false
+8.10.10.20 globalThis.window.self.self.onerror object 
+8.10.10.21 globalThis.window.self.self.onload object 
+8.10.10.22 globalThis.window.self.self.onbeforeunload object 
+8.10.10.23 globalThis.window.self.self.onunload object 
+8.10.10.24 globalThis.window.self.self.onunhandledrejection object 
+8.10.10.25 globalThis.window.self.self.clearInterval function 
+8.10.10.26 globalThis.window.self.self.clearTimeout function 
+8.10.10.27 globalThis.window.self.self.performance object 
+8.10.10.28 globalThis.window.self.self.setInterval function 
+8.10.10.29 globalThis.window.self.self.setTimeout function 
+8.10.10.30 globalThis.window.self.self.window object 
+8.10.10.31 globalThis.window.self.self.addEventListener function 
+8.10.10.32 globalThis.window.self.self.removeEventListener function 
+8.10.10.33 globalThis.window.self.self.dispatchEvent function 
+8.10.10.34 globalThis.window.self.self.getParent function 
+8.10.11 globalThis.window.self.navigator object 
+8.10.11.1 globalThis.window.self.navigator.gpu object 
+8.10.11.2 globalThis.window.self.navigator.hardwareConcurrency number 8
+8.10.11.3 globalThis.window.self.navigator.userAgent string Deno/1.39.0
+8.10.11.4 globalThis.window.self.navigator.language string en-US
+8.10.11.5 globalThis.window.self.navigator.languages object 
+8.10.12 globalThis.window.self.alert function 
+8.10.13 globalThis.window.self.confirm function 
+8.10.14 globalThis.window.self.prompt function 
+8.10.15 globalThis.window.self.localStorage object 
+8.10.16 globalThis.window.self.sessionStorage object 
+8.10.17 globalThis.window.self.name string 
+8.10.18 globalThis.window.self.close function 
+8.10.19 globalThis.window.self.closed boolean false
+8.10.20 globalThis.window.self.onerror object 
+8.10.21 globalThis.window.self.onload object 
+8.10.22 globalThis.window.self.onbeforeunload object 
+8.10.23 globalThis.window.self.onunload object 
+8.10.24 globalThis.window.self.onunhandledrejection object 
+8.10.25 globalThis.window.self.clearInterval function 
+8.10.26 globalThis.window.self.clearTimeout function 
+8.10.27 globalThis.window.self.performance object 
+8.10.27.1 globalThis.window.self.performance.timeOrigin number 1703064186783
+8.10.27.2 globalThis.window.self.performance.clearMarks function 
+8.10.27.3 globalThis.window.self.performance.clearMeasures function 
+8.10.27.4 globalThis.window.self.performance.getEntries function 
+8.10.27.5 globalThis.window.self.performance.getEntriesByName function 
+8.10.27.6 globalThis.window.self.performance.getEntriesByType function 
+8.10.27.7 globalThis.window.self.performance.mark function 
+8.10.27.8 globalThis.window.self.performance.measure function 
+8.10.27.9 globalThis.window.self.performance.now function 
+8.10.27.10 globalThis.window.self.performance.toJSON function 
+8.10.27.11 globalThis.window.self.performance.addEventListener function 
+8.10.27.12 globalThis.window.self.performance.removeEventListener function 
+8.10.27.13 globalThis.window.self.performance.dispatchEvent function 
+8.10.27.14 globalThis.window.self.performance.getParent function 
+8.10.28 globalThis.window.self.setInterval function 
+8.10.29 globalThis.window.self.setTimeout function 
+8.10.30 globalThis.window.self.window object 
+8.10.30.1 globalThis.window.self.window.queueMicrotask function 
+8.10.30.2 globalThis.window.self.window.atob function 
+8.10.30.3 globalThis.window.self.window.btoa function 
+8.10.30.4 globalThis.window.self.window.caches object 
+8.10.30.5 globalThis.window.self.window.crypto object 
+8.10.30.6 globalThis.window.self.window.fetch function 
+8.10.30.7 globalThis.window.self.window.EventSource function 
+8.10.30.8 globalThis.window.self.window.reportError function 
+8.10.30.9 globalThis.window.self.window.structuredClone function 
+8.10.30.10 globalThis.window.self.window.self object 
+8.10.30.11 globalThis.window.self.window.navigator object 
+8.10.30.12 globalThis.window.self.window.alert function 
+8.10.30.13 globalThis.window.self.window.confirm function 
+8.10.30.14 globalThis.window.self.window.prompt function 
+8.10.30.15 globalThis.window.self.window.localStorage object 
+8.10.30.16 globalThis.window.self.window.sessionStorage object 
+8.10.30.17 globalThis.window.self.window.name string 
+8.10.30.18 globalThis.window.self.window.close function 
+8.10.30.19 globalThis.window.self.window.closed boolean false
+8.10.30.20 globalThis.window.self.window.onerror object 
+8.10.30.21 globalThis.window.self.window.onload object 
+8.10.30.22 globalThis.window.self.window.onbeforeunload object 
+8.10.30.23 globalThis.window.self.window.onunload object 
+8.10.30.24 globalThis.window.self.window.onunhandledrejection object 
+8.10.30.25 globalThis.window.self.window.clearInterval function 
+8.10.30.26 globalThis.window.self.window.clearTimeout function 
+8.10.30.27 globalThis.window.self.window.performance object 
+8.10.30.28 globalThis.window.self.window.setInterval function 
+8.10.30.29 globalThis.window.self.window.setTimeout function 
+8.10.30.30 globalThis.window.self.window.window object 
+8.10.30.31 globalThis.window.self.window.addEventListener function 
+8.10.30.32 globalThis.window.self.window.removeEventListener function 
+8.10.30.33 globalThis.window.self.window.dispatchEvent function 
+8.10.30.34 globalThis.window.self.window.getParent function 
+8.10.31 globalThis.window.self.addEventListener function 
+8.10.32 globalThis.window.self.removeEventListener function 
+8.10.33 globalThis.window.self.dispatchEvent function 
+8.10.34 globalThis.window.self.getParent function 
+8.11 globalThis.window.navigator object 
+8.11.1 globalThis.window.navigator.gpu object 
+8.11.2 globalThis.window.navigator.hardwareConcurrency number 8
+8.11.3 globalThis.window.navigator.userAgent string Deno/1.39.0
+8.11.4 globalThis.window.navigator.language string en-US
+8.11.5 globalThis.window.navigator.languages object 
+8.11.5.1 globalThis.window.navigator.languages.0 string en-US
+8.12 globalThis.window.alert function 
+8.13 globalThis.window.confirm function 
+8.14 globalThis.window.prompt function 
+8.15 globalThis.window.localStorage object 
+8.16 globalThis.window.sessionStorage object 
+8.17 globalThis.window.name string 
+8.18 globalThis.window.close function 
+8.19 globalThis.window.closed boolean false
+8.20 globalThis.window.onerror object 
+8.21 globalThis.window.onload object 
+8.22 globalThis.window.onbeforeunload object 
+8.23 globalThis.window.onunload object 
+8.24 globalThis.window.onunhandledrejection object 
+8.25 globalThis.window.clearInterval function 
+8.26 globalThis.window.clearTimeout function 
+8.27 globalThis.window.performance object 
+8.27.1 globalThis.window.performance.timeOrigin number 1703064186783
+8.27.2 globalThis.window.performance.clearMarks function 
+8.27.3 globalThis.window.performance.clearMeasures function 
+8.27.4 globalThis.window.performance.getEntries function 
+8.27.5 globalThis.window.performance.getEntriesByName function 
+8.27.6 globalThis.window.performance.getEntriesByType function 
+8.27.7 globalThis.window.performance.mark function 
+8.27.8 globalThis.window.performance.measure function 
+8.27.9 globalThis.window.performance.now function 
+8.27.10 globalThis.window.performance.toJSON function 
+8.27.11 globalThis.window.performance.addEventListener function 
+8.27.12 globalThis.window.performance.removeEventListener function 
+8.27.13 globalThis.window.performance.dispatchEvent function 
+8.27.14 globalThis.window.performance.getParent function 
+8.28 globalThis.window.setInterval function 
+8.29 globalThis.window.setTimeout function 
+8.30 globalThis.window.window object 
+8.30.1 globalThis.window.window.queueMicrotask function 
+8.30.2 globalThis.window.window.atob function 
+8.30.3 globalThis.window.window.btoa function 
+8.30.4 globalThis.window.window.caches object 
+8.30.4.1 globalThis.window.window.caches.open function 
+8.30.4.2 globalThis.window.window.caches.has function 
+8.30.4.3 globalThis.window.window.caches.delete function 
+8.30.5 globalThis.window.window.crypto object 
+8.30.5.1 globalThis.window.window.crypto.getRandomValues function 
+8.30.5.2 globalThis.window.window.crypto.randomUUID function 
+8.30.5.3 globalThis.window.window.crypto.subtle object 
+8.30.6 globalThis.window.window.fetch function 
+8.30.7 globalThis.window.window.EventSource function 
+8.30.8 globalThis.window.window.reportError function 
+8.30.9 globalThis.window.window.structuredClone function 
+8.30.10 globalThis.window.window.self object 
+8.30.10.1 globalThis.window.window.self.queueMicrotask function 
+8.30.10.2 globalThis.window.window.self.atob function 
+8.30.10.3 globalThis.window.window.self.btoa function 
+8.30.10.4 globalThis.window.window.self.caches object 
+8.30.10.5 globalThis.window.window.self.crypto object 
+8.30.10.6 globalThis.window.window.self.fetch function 
+8.30.10.7 globalThis.window.window.self.EventSource function 
+8.30.10.8 globalThis.window.window.self.reportError function 
+8.30.10.9 globalThis.window.window.self.structuredClone function 
+8.30.10.10 globalThis.window.window.self.self object 
+8.30.10.11 globalThis.window.window.self.navigator object 
+8.30.10.12 globalThis.window.window.self.alert function 
+8.30.10.13 globalThis.window.window.self.confirm function 
+8.30.10.14 globalThis.window.window.self.prompt function 
+8.30.10.15 globalThis.window.window.self.localStorage object 
+8.30.10.16 globalThis.window.window.self.sessionStorage object 
+8.30.10.17 globalThis.window.window.self.name string 
+8.30.10.18 globalThis.window.window.self.close function 
+8.30.10.19 globalThis.window.window.self.closed boolean false
+8.30.10.20 globalThis.window.window.self.onerror object 
+8.30.10.21 globalThis.window.window.self.onload object 
+8.30.10.22 globalThis.window.window.self.onbeforeunload object 
+8.30.10.23 globalThis.window.window.self.onunload object 
+8.30.10.24 globalThis.window.window.self.onunhandledrejection object 
+8.30.10.25 globalThis.window.window.self.clearInterval function 
+8.30.10.26 globalThis.window.window.self.clearTimeout function 
+8.30.10.27 globalThis.window.window.self.performance object 
+8.30.10.28 globalThis.window.window.self.setInterval function 
+8.30.10.29 globalThis.window.window.self.setTimeout function 
+8.30.10.30 globalThis.window.window.self.window object 
+8.30.10.31 globalThis.window.window.self.addEventListener function 
+8.30.10.32 globalThis.window.window.self.removeEventListener function 
+8.30.10.33 globalThis.window.window.self.dispatchEvent function 
+8.30.10.34 globalThis.window.window.self.getParent function 
+8.30.11 globalThis.window.window.navigator object 
+8.30.11.1 globalThis.window.window.navigator.gpu object 
+8.30.11.2 globalThis.window.window.navigator.hardwareConcurrency number 8
+8.30.11.3 globalThis.window.window.navigator.userAgent string Deno/1.39.0
+8.30.11.4 globalThis.window.window.navigator.language string en-US
+8.30.11.5 globalThis.window.window.navigator.languages object 
+8.30.12 globalThis.window.window.alert function 
+8.30.13 globalThis.window.window.confirm function 
+8.30.14 globalThis.window.window.prompt function 
+8.30.15 globalThis.window.window.localStorage object 
+8.30.16 globalThis.window.window.sessionStorage object 
+8.30.17 globalThis.window.window.name string 
+8.30.18 globalThis.window.window.close function 
+8.30.19 globalThis.window.window.closed boolean false
+8.30.20 globalThis.window.window.onerror object 
+8.30.21 globalThis.window.window.onload object 
+8.30.22 globalThis.window.window.onbeforeunload object 
+8.30.23 globalThis.window.window.onunload object 
+8.30.24 globalThis.window.window.onunhandledrejection object 
+8.30.25 globalThis.window.window.clearInterval function 
+8.30.26 globalThis.window.window.clearTimeout function 
+8.30.27 globalThis.window.window.performance object 
+8.30.27.1 globalThis.window.window.performance.timeOrigin number 1703064186783
+8.30.27.2 globalThis.window.window.performance.clearMarks function 
+8.30.27.3 globalThis.window.window.performance.clearMeasures function 
+8.30.27.4 globalThis.window.window.performance.getEntries function 
+8.30.27.5 globalThis.window.window.performance.getEntriesByName function 
+8.30.27.6 globalThis.window.window.performance.getEntriesByType function 
+8.30.27.7 globalThis.window.window.performance.mark function 
+8.30.27.8 globalThis.window.window.performance.measure function 
+8.30.27.9 globalThis.window.window.performance.now function 
+8.30.27.10 globalThis.window.window.performance.toJSON function 
+8.30.27.11 globalThis.window.window.performance.addEventListener function 
+8.30.27.12 globalThis.window.window.performance.removeEventListener function 
+8.30.27.13 globalThis.window.window.performance.dispatchEvent function 
+8.30.27.14 globalThis.window.window.performance.getParent function 
+8.30.28 globalThis.window.window.setInterval function 
+8.30.29 globalThis.window.window.setTimeout function 
+8.30.30 globalThis.window.window.window object 
+8.30.30.1 globalThis.window.window.window.queueMicrotask function 
+8.30.30.2 globalThis.window.window.window.atob function 
+8.30.30.3 globalThis.window.window.window.btoa function 
+8.30.30.4 globalThis.window.window.window.caches object 
+8.30.30.5 globalThis.window.window.window.crypto object 
+8.30.30.6 globalThis.window.window.window.fetch function 
+8.30.30.7 globalThis.window.window.window.EventSource function 
+8.30.30.8 globalThis.window.window.window.reportError function 
+8.30.30.9 globalThis.window.window.window.structuredClone function 
+8.30.30.10 globalThis.window.window.window.self object 
+8.30.30.11 globalThis.window.window.window.navigator object 
+8.30.30.12 globalThis.window.window.window.alert function 
+8.30.30.13 globalThis.window.window.window.confirm function 
+8.30.30.14 globalThis.window.window.window.prompt function 
+8.30.30.15 globalThis.window.window.window.localStorage object 
+8.30.30.16 globalThis.window.window.window.sessionStorage object 
+8.30.30.17 globalThis.window.window.window.name string 
+8.30.30.18 globalThis.window.window.window.close function 
+8.30.30.19 globalThis.window.window.window.closed boolean false
+8.30.30.20 globalThis.window.window.window.onerror object 
+8.30.30.21 globalThis.window.window.window.onload object 
+8.30.30.22 globalThis.window.window.window.onbeforeunload object 
+8.30.30.23 globalThis.window.window.window.onunload object 
+8.30.30.24 globalThis.window.window.window.onunhandledrejection object 
+8.30.30.25 globalThis.window.window.window.clearInterval function 
+8.30.30.26 globalThis.window.window.window.clearTimeout function 
+8.30.30.27 globalThis.window.window.window.performance object 
+8.30.30.28 globalThis.window.window.window.setInterval function 
+8.30.30.29 globalThis.window.window.window.setTimeout function 
+8.30.30.30 globalThis.window.window.window.window object 
+8.30.30.31 globalThis.window.window.window.addEventListener function 
+8.30.30.32 globalThis.window.window.window.removeEventListener function 
+8.30.30.33 globalThis.window.window.window.dispatchEvent function 
+8.30.30.34 globalThis.window.window.window.getParent function 
+8.30.31 globalThis.window.window.addEventListener function 
+8.30.32 globalThis.window.window.removeEventListener function 
+8.30.33 globalThis.window.window.dispatchEvent function 
+8.30.34 globalThis.window.window.getParent function 
+8.31 globalThis.window.addEventListener function 
+8.32 globalThis.window.removeEventListener function 
+8.33 globalThis.window.dispatchEvent function 
+8.34 globalThis.window.getParent function 
